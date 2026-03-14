@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ujian Online - Exambro SMAYO</title>
+    <style>
+        /* --- GAYA DASAR --- */
+        body, html {
+            margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5; overflow: hidden;
+            /* FITUR KEAMANAN: Mencegah seleksi teks secara umum */
+            user-select: none; 
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        /* --- 1. HALAMAN LOGIN --- */
+        #login-screen {
+            display: flex; justify-content: center; align-items: center; height: 100%; flex-direction: column;
+            position: relative; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .login-box {
+            background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1); text-align: center; width: 320px;
+            backdrop-filter: blur(5px);
+        }
+        /* Pengecualian: Boleh menyeleksi teks di dalam inputan login */
+        input[type="text"], input[type="password"] {
+            width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px;
+            box-sizing: border-box; font-size: 16px; transition: border-color 0.3s;
+            user-select: auto; -webkit-user-select: auto;
+        }
+        input:focus { border-color: #0072ff; outline: none; }
+
+        button.btn-primary {
+            width: 100%; padding: 12px; background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%);
+            color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px;
+            margin-top: 15px; font-weight: 600; transition: transform 0.1s;
+        }
+        button.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,114,255,0.3); }
+        button.btn-primary:active { transform: translateY(1px); }
+        button.btn-primary:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .watermark {
+            position: absolute; bottom: 20px; width: 100%; text-align: center;
+            color: #6c757d; font-size: 14px; font-weight: 500; opacity: 0.7; pointer-events: none; 
+        }
+
+        /* --- 2. HALAMAN UJIAN (HEADER + IFRAME) --- */
+        #exam-screen {
+            display: none; height: 100%; width: 100%; flex-direction: column; background-color: #fff;
+        }
+        
+        #exam-header {
+            height: 64px; background-color: #0f172a; color: #ffffff; 
+            display: flex; justify-content: space-between; align-items: center; padding: 0 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25); z-index: 10;
+        }
+        .header-info { font-size: 13px; color: #cbd5e1; }
+        .header-info strong { font-size: 17px; color: #ffffff; display: block; font-weight: 700; letter-spacing: 0.5px;}
+        
+        .timer-container { font-size: 26px; font-weight: 800; color: #facc15; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); letter-spacing: 1px; transition: color 0.3s;}
+        
+        /* FITUR BARU: Animasi berkedip saat waktu kritis (< 5 menit) */
+        @keyframes kedipKritis {
+            0% { color: #facc15; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
+            50% { color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.8); }
+            100% { color: #facc15; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
+        }
+        .timer-kritis { animation: kedipKritis 1s infinite; }
+        
+        button.btn-selesai {
+            padding: 10px 24px; background-color: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;
+            font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: background-color 0.2s;
+        }
+        button.btn-selesai:hover { background-color: #dc2626; }
+
+        iframe { width: 100%; flex-grow: 1; border: none; background: #fff;}
+
+        /* --- 3. HALAMAN PELANGGARAN --- */
+        #violation-screen {
+            display: none; height: 100%; width: 100%; background-color: #d32f2f; color: white;
+            flex-direction: column; justify-content: center; align-items: center; text-align: center;
+        }
+        #violation-screen h1 { font-size: 4rem; margin: 0; text-transform: uppercase; letter-spacing: 3px; font-weight: 900;}
+        #violation-screen p { font-size: 1.4rem; margin-bottom: 30px; max-width: 600px; line-height: 1.5;}
+        button.btn-putih {
+            padding: 14px 35px; background-color: white; color: #d32f2f; border: none; border-radius: 6px;
+            cursor: pointer; font-size: 16px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: background-color 0.2s;
+        }
+        button.btn-putih:hover { background-color: #f8f9fa; color: #b71c1c;}
+        /* --- PENGATURAN KHUSUS LAYAR HP (RESPONSIVE) --- */
+        @media screen and (max-width: 600px) {
+            /* Menyesuaikan lebar kotak login */
+            .login-box {
+                width: 85%;
+                padding: 30px 20px;
+            }
+            
+            /* Menata ulang Header agar tidak bertabrakan */
+            #exam-header {
+                padding: 10px 15px;
+                height: auto;
+                flex-wrap: wrap; /* Mengizinkan elemen turun ke baris baru */
+                justify-content: space-between;
+                gap: 10px;
+            }
+            
+            /* Membuat Nama Info Mapel penuh satu baris di atas */
+            .header-info {
+                width: 100%;
+                text-align: left;
+                margin-bottom: 5px;
+            }
+            
+            /* Mengecilkan sedikit Timer dan Tombol */
+            .timer-container {
+                font-size: 22px;
+            }
+            button.btn-selesai {
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+
+            /* Mengecilkan teks Layar Pelanggaran */
+            #violation-screen h1 {
+                font-size: 2.5rem;
+            }
+            #violation-screen p {
+                font-size: 1rem;
+                padding: 0 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <h2 style="margin-top: 0; color: #333;">CBT SMA Negeri 1 Yosowilangun</h2>
+            <input type="text" id="nis-input" placeholder="Masukkan NIS" autocomplete="off">
+            <input type="password" id="pin-input" placeholder="Masukkan PIN" autocomplete="off">
+            <button class="btn-primary" onclick="cekLogin()">MULAI UJIAN</button>
+            <p id="error-msg" style="color: #d32f2f; display: none; font-size: 14px; margin-top: 15px;">Pesan Error</p>
+        </div>
+        <div class="watermark">©2026 Tim IT SMAYO</div>
+    </div>
+
+    <div id="exam-screen">
+        <div id="exam-header">
+            <div class="header-info">
+                <strong id="info-mapel">Mata Pelajaran</strong>
+                <span id="info-nama">NIS - Nama Siswa</span>
+            </div>
+            <div class="timer-container" id="timer-display">00:00:00</div>
+            <button class="btn-selesai" onclick="selesaiUjian()">SELESAI</button>
+        </div>
+        <iframe id="form-iframe" src=""></iframe>
+    </div>
+
+    <div id="violation-screen">
+        <h1>PELANGGARAN!</h1>
+        <p>Sistem mendeteksi aktivitas mencurigakan (keluar layar/pindah tab).<br>Ujian dihentikan sementara.</p>
+        <button class="btn-putih" onclick="kembaliKeLogin()">Login Ulang</button>
+    </div>
+
+    <script>
+        let isExamActive = false;
+        let timerInterval;
+        let activeNIS = "";
+        let dataSiswaAktif = null;
+
+        // =========================================================================
+        // 1. PASTE URL APPS SCRIPT KAMU DI BAWAH INI (Di dalam tanda kutip)
+        // =========================================================================
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyIHEStXhw13zsksACIvix72cuL-DK0je_X1JdtkocJ5QKE6KJ4K8hNv-Ny13SmtfGx/exec";
+
+        // =========================================================================
+        // LOGIKA KONEKSI KE GOOGLE SHEETS
+        // =========================================================================
+        async function cekLogin() {
+            const inputNis = document.getElementById('nis-input').value.trim();
+            const inputPin = document.getElementById('pin-input').value.trim();
+            const btnLogin = document.querySelector('.btn-primary');
+            const errorMsg = document.getElementById('error-msg');
+
+            if (!inputNis || !inputPin) {
+                tampilkanError("NIS dan PIN harus diisi!");
+                return;
+            }
+
+            btnLogin.innerText = "Mengecek Data...";
+            btnLogin.disabled = true;
+            errorMsg.style.display = 'none';
+
+            try {
+                const response = await fetch(`${SCRIPT_URL}?nis=${inputNis}&pin=${inputPin}`);
+                const result = await response.json();
+
+                if (result.status === "sukses") {
+                    mulaiUjian(result.data);
+                } else {
+                    tampilkanError(result.pesan);
+                }
+            } catch (error) {
+                tampilkanError("Terjadi kesalahan koneksi. Pastikan internet aktif.");
+            } finally {
+                btnLogin.innerText = "MULAI UJIAN";
+                btnLogin.disabled = false;
+            }
+        }
+
+        function tampilkanError(pesan) {
+            const errorMsg = document.getElementById('error-msg');
+            errorMsg.innerText = pesan;
+            errorMsg.style.display = 'block';
+            document.querySelector('.login-box').animate([
+                { transform: 'translateX(0px)' }, { transform: 'translateX(-5px)' },
+                { transform: 'translateX(5px)' }, { transform: 'translateX(0px)' }
+            ], { duration: 200, iterations: 2 });
+        }
+
+        // =========================================================================
+        // LOGIKA UJIAN, TIMER, DAN PELANGGARAN
+        // =========================================================================
+        function mulaiUjian(dataSiswa) {
+            document.getElementById('error-msg').style.display = 'none';
+            document.getElementById('pin-input').value = '';
+            
+            document.getElementById('info-mapel').innerText = dataSiswa.mapel;
+            document.getElementById('info-nama').innerText = `${dataSiswa.nis} - ${dataSiswa.nama} (${dataSiswa.kelas})`;
+            document.getElementById('form-iframe').src = dataSiswa.linkSoal;
+
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('violation-screen').style.display = 'none';
+            document.getElementById('exam-screen').style.display = 'flex';
+            
+            isExamActive = true;
+            activeNIS = dataSiswa.nis;
+            
+            // SIMPAN DATA MURID UNTUK KEBUTUHAN LAPORAN PELANGGARAN
+            dataSiswaAktif = dataSiswa; 
+
+            jalankanTimer(dataSiswa.durasiMenit, dataSiswa.nis);
+
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(e => console.log(e));
+            }
+        }
+
+        function jalankanTimer(durasiMenit, nis) {
+            clearInterval(timerInterval);
+            const storageKey = `exam_endTime_${nis}_smayo`;
+            let endTime = localStorage.getItem(storageKey);
+
+            if (!endTime) {
+                endTime = Date.now() + (durasiMenit * 60 * 1000);
+                localStorage.setItem(storageKey, endTime);
+            }
+
+            updateTimerDisplay(endTime); 
+            timerInterval = setInterval(() => {
+                updateTimerDisplay(endTime);
+            }, 1000);
+        }
+
+        function updateTimerDisplay(endTime) {
+            let sisaWaktu = Math.floor((endTime - Date.now()) / 1000);
+            const timerElemen = document.getElementById('timer-display');
+
+            if (sisaWaktu <= 0) {
+                clearInterval(timerInterval);
+                timerElemen.innerText = "00:00:00";
+                timerElemen.classList.remove('timer-kritis'); // Hapus efek kedip
+                selesaiUjian(true);
+                return;
+            }
+
+            // FITUR BARU: Jika sisa waktu <= 5 menit (300 detik), nyalakan animasi kedip
+            if (sisaWaktu <= 300) {
+                timerElemen.classList.add('timer-kritis');
+            } else {
+                timerElemen.classList.remove('timer-kritis');
+            }
+
+            let jam = Math.floor(sisaWaktu / 3600);
+            let menit = Math.floor((sisaWaktu % 3600) / 60);
+            let detik = sisaWaktu % 60;
+            
+            timerElemen.innerText = 
+                String(jam).padStart(2, '0') + ":" + 
+                String(menit).padStart(2, '0') + ":" + 
+                String(detik).padStart(2, '0');
+        }
+
+        // ==========================================
+        // FUNGSI LAPOR (Diperbarui agar bebas Error Syntax)
+        // ==========================================
+        function laporPelanggaranKeServer() {
+            if (!dataSiswaAktif) return;
+            
+            // Menggunakan penggabungan (+) biasa agar tidak error jika ada kurung terhapus
+            const urlLapor = SCRIPT_URL + "?action=log" + 
+                             "&nis=" + encodeURIComponent(dataSiswaAktif.nis) + 
+                             "&nama=" + encodeURIComponent(dataSiswaAktif.nama) + 
+                             "&kelas=" + encodeURIComponent(dataSiswaAktif.kelas) + 
+                             "&mapel=" + encodeURIComponent(dataSiswaAktif.mapel);
+            
+            // Trik rahasia mengirim data melewati blokir browser
+            const pengirimRahasia = new Image();
+            pengirimRahasia.src = urlLapor;
+        }
+
+        // ==========================================
+        // FUNGSI PELANGGARAN TERDETEKSI
+        // ==========================================
+        function pelanggaranTerdeteksi() {
+            if (isExamActive) {
+                isExamActive = false;
+                clearInterval(timerInterval);
+                document.getElementById('form-iframe').src = "about:blank"; 
+                document.getElementById('exam-screen').style.display = 'none';
+                document.getElementById('violation-screen').style.display = 'flex';
+                
+                // Lapor ke Google Sheets
+                laporPelanggaranKeServer();
+
+                if (document.fullscreenElement) document.exitFullscreen().catch(e => console.log(e));
+            }
+        }
+
+        function kembaliKeLogin() {
+            document.getElementById('violation-screen').style.display = 'none';
+            document.getElementById('login-screen').style.display = 'flex';
+        }
+
+        function selesaiUjian(waktuHabis = false) {
+            if (!waktuHabis && !confirm("Yakin ingin mengakhiri ujian? Jawaban di Google Form HARUS sudah dikirim (Submit) sebelum menekan tombol ini.")) {
+                return;
+            }
+            isExamActive = false;
+            clearInterval(timerInterval);
+            localStorage.removeItem(`exam_endTime_${activeNIS}_smayo`);
+            document.getElementById('form-iframe').src = "about:blank";
+            document.getElementById('exam-screen').style.display = 'none';
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('nis-input').value = '';
+            document.getElementById('pin-input').value = '';
+            document.getElementById('timer-display').classList.remove('timer-kritis');
+            
+            if (waktuHabis) {
+                alert("Waktu Habis! Ujian otomatis diakhiri.");
+            } else {
+                alert("Terima kasih. Ujian telah selesai.");
+            }
+
+            if (document.fullscreenElement) document.exitFullscreen().catch(e => console.log(e));
+        }
+
+        // =========================================================================
+        // SENSOR ANTI CURANG (BLOKIR TAB, KLIK KANAN, SHORTCUT KEYBOARD)
+        // =========================================================================
+        
+        // 1. Sensor Pindah Tab / Layar Hide
+        document.addEventListener("visibilitychange", () => { 
+            if (document.visibilityState === 'hidden') pelanggaranTerdeteksi(); 
+        });
+        
+        // 2. Sensor Kehilangan Fokus Layar
+        window.addEventListener("blur", () => {
+            setTimeout(() => {
+                if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+                    return; // Abaikan jika sedang mengetik di Google Form
+                }
+                pelanggaranTerdeteksi();
+            }, 100);
+        });
+
+        // 3. FITUR BARU: Blokir Klik Kanan (Context Menu)
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        // 4. FITUR BARU: Blokir Shortcut Keyboard Terlarang
+        document.addEventListener('keydown', function(e) {
+            // Blokir F12 (Inspect Element)
+            if (e.key === 'F12') {
+                e.preventDefault();
+            }
+            // Blokir Ctrl+Shift+I (Inspect), Ctrl+Shift+J (Console), Ctrl+Shift+C
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
+                e.preventDefault();
+            }
+            // Blokir Ctrl+U (View Source)
+            if (e.ctrlKey && (e.key === 'U' || e.key === 'u')) {
+                e.preventDefault();
+            }
+            // Blokir Ctrl+C (Copy), Ctrl+V (Paste), Ctrl+P (Print), Ctrl+S (Save)
+            if (e.ctrlKey && (e.key === 'C' || e.key === 'c' || e.key === 'V' || e.key === 'v' || e.key === 'P' || e.key === 'p' || e.key === 'S' || e.key === 's')) {
+                e.preventDefault();
+            }
+        });
+
+        // 5. FITUR BARU: Blokir Event Copy, Cut, Paste secara sistem
+        document.addEventListener('copy', (e) => e.preventDefault());
+        document.addEventListener('cut', (e) => e.preventDefault());
+        document.addEventListener('paste', (e) => e.preventDefault());
+
+    </script>
+</body>
+</html>
